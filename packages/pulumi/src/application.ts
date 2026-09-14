@@ -9,6 +9,7 @@ import { Metadata } from './metadata';
 import { Network } from './network';
 import { Nodes } from './nodes';
 import { Services } from './services';
+import { Smtp } from './smtp';
 import { Storage } from './storage';
 import {
     ConfigVolumeSpec,
@@ -31,6 +32,7 @@ export class Application {
     readonly nodes: Nodes;
     readonly network: Network;
     readonly auth: Auth;
+    readonly smtp: Smtp;
     /** Resolved OIDC client settings for native application authentication or route protection. */
     readonly oidc?: OidcAuthConfig;
     readonly debug: boolean;
@@ -53,6 +55,7 @@ export class Application {
         this.storageOnly = config.getBoolean(appName, 'storageOnly') ?? false;
         this.debug = config.getBoolean(appName, 'debug') ?? false;
         this.auth = new Auth(appName);
+        this.smtp = new Smtp(appName);
         this.oidc = this.auth.getOidc(args?.oidc);
         const routeOidc = args?.oidc?.protectRoutes ? this.oidc : undefined;
         this.metadata = new Metadata(
@@ -258,13 +261,14 @@ export class Application {
         },
         opts?: pulumi.CustomResourceOptions,
     ) {
+        const isOci = args.repo.startsWith('oci://');
         const chart = new kubernetes.helm.v3.Release(
             name,
             {
-                chart: args.chart,
+                chart: isOci ? `${args.repo}/${args.chart}` : args.chart,
                 namespace: this.metadata.namespace,
                 version: config.get(this.appName, 'version'),
-                repositoryOpts: { repo: args.repo },
+                repositoryOpts: isOci ? undefined : { repo: args.repo },
                 maxHistory: config.helmHistoryLimit,
                 skipCrds: args.skipCrds,
                 values: args.values,

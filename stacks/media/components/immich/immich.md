@@ -53,18 +53,7 @@ Run the helper from the media stack directory after deploying Pocket ID and conf
 
 ```sh
 cd stacks/media
-
-IMMICH_URL=$(pulumi stack output --json | jq -er '.endpoints.immich')
-
-../../scripts/pocket-client.sh \
-  --app-name immich \
-  --client-name "Immich" \
-  --launch-url "$IMMICH_URL" \
-  --callback-url "$IMMICH_URL/auth/login" \
-  --callback-url "$IMMICH_URL/user-settings" \
-  --callback-url app.immich:///oauth-callback \
-  --dark-icon-url https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/immich-dark.svg \
-  --light-icon-url https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/immich.svg
+./components/immich/pocket-immich.sh
 ```
 
 The helper creates all required web and mobile callbacks, prints the OIDC issuer URL, client ID, and client secret, and reuses existing clients without rotating their secrets. Configure the printed client values in Pulumi:
@@ -77,8 +66,6 @@ pulumi config set immich:auth/clientId <client-id>
 pulumi config set immich:auth/clientSecret <client-secret> --secret
 pulumi up
 ```
-
-The generated config includes OAuth, machine-learning, and SMTP settings. The OAuth button text defaults to `Login with OrangeLab`; override it with `immich:auth/providerName` if needed. The OIDC issuer URL is resolved from the core stack's `security.oidcProviderUrl`, or can be overridden with `immich:auth/providerUrl`.
 
 ### OAuth settings
 
@@ -100,14 +87,14 @@ cd stacks/media
 pulumi config set immich:smtp/enabled true
 pulumi config set immich:smtp/host smtp.example.com
 pulumi config set immich:smtp/port 587
-pulumi config set immich:smtp/secure false
+pulumi config set immich:smtp/secure starttls # none | starttls | smtps
 pulumi config set immich:smtp/from "OrangeLab Immich <admin@orangelab.space>"
 pulumi config set immich:smtp/username admin@example.com
 pulumi config set immich:smtp/password <smtp-password> --secret
 pulumi up
 ```
 
-The `secure` setting defaults to `false` for providers using STARTTLS on port `587`. Providers using implicit TLS can set `immich:smtp/secure true` and override the port to `465`. The generated configuration verifies the server certificate. Port `587` is the default but can be overridden for providers using a different port. The `from` address is used as the sender and reply address. SMTP credentials are included in the Secret-backed config file and are not stored in a ConfigMap.
+Use `secure: starttls` for STARTTLS on port `587`, or `secure: smtps` for implicit TLS on port `465` (override `immich:smtp/port`). Immich cannot force plaintext, so `secure: none` leaves the mode to Immich. The generated configuration verifies the server certificate. The `from` address is used as the sender and reply address. SMTP credentials are included in the Secret-backed config file and are not stored in a ConfigMap.
 
 ## Reset Admin Password
 

@@ -1,6 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { Application, config, DatabaseConfig, HttpEndpointInfo, OidcAuthConfig } from '@orangelab/pulumi';
+import {
+    Application,
+    config,
+    DatabaseConfig,
+    HttpEndpointInfo,
+    OidcAuthConfig,
+    SmtpSettings,
+} from '@orangelab/pulumi';
 import * as k8s from '@pulumi/kubernetes';
 import * as pulumi from '@pulumi/pulumi';
 
@@ -24,26 +31,29 @@ export class Nextcloud extends pulumi.ComponentResource {
         const redisConfig = this.app.databases?.getConfig('redis');
         if (!redisConfig) throw new Error('Redis not found');
         const adminPassword = config.requireSecret(appName, 'adminPassword');
-        const adminSecret = this.createAdminSecret(adminPassword);
+        const smtp = this.app.smtp.getSettings();
+        const appSecret = this.createSecret(adminPassword, smtp);
         const httpEndpointInfo = this.app.network.getHttpEndpointInfo();
         const auth = this.app.auth.getOidc();
         this.users = { admin: adminPassword };
         this.createHelmChart({
             httpEndpointInfo,
-            adminSecret,
+            appSecret,
             dbConfig: this.dbConfig,
             redisConfig,
             auth,
+            smtp,
         });
         this.serviceUrl = httpEndpointInfo.url;
     }
 
     private createHelmChart(args: {
         httpEndpointInfo: HttpEndpointInfo;
-        adminSecret: k8s.core.v1.Secret;
+        appSecret: k8s.core.v1.Secret;
         dbConfig: DatabaseConfig;
         redisConfig: DatabaseConfig;
         auth: OidcAuthConfig | undefined;
+        smtp: SmtpSettings;
     }) {
         const waitForDb = this.app.databases?.getWaitContainer();
         const waitForRedis = this.app.databases?.getWaitContainer(args.redisConfig);
@@ -98,10 +108,11 @@ export class Nextcloud extends pulumi.ComponentResource {
                         ...(args.auth ? { hooks: { 'before-starting': this.getOidcHook() } } : {}),
                         existingSecret: {
                             enabled: true,
-                            secretName: args.adminSecret.metadata.name,
+                            secretName: args.appSecret.metadata.name,
                             usernameKey: 'username',
                             passwordKey: 'password',
                         },
+                        mail: this.getMailConfig(args.smtp),
                         trustedDomains: [args.httpEndpointInfo.hostname],
                     },
                     persistence: {
@@ -147,6 +158,24 @@ $CONFIG = array (
 );`,
                   }
                 : {}),
+        };
+    }
+
+    private getMailConfig(smtp: SmtpSettings) {
+        if (!smtp.enabled) return { enabled: false };
+
+        const [fromAddress, domain] = smtp.from.split('@');
+        return {
+            enabled: true,
+            fromAddress,
+            domain,
+            smtp: {
+                authtype: 'LOGIN',
+                port: smtp.port,
+                ...(smtp.secure === 'none'
+                    ? {}
+                    : { secure: smtp.secure === 'starttls' ? 'tls' : 'ssl' }),
+            },
         };
     }
 
@@ -231,14 +260,21 @@ $CONFIG = array (
         );
     }
 
-    private createAdminSecret(password: pulumi.Input<string>) {
+    private createSecret(password: pulumi.Input<string>, smtp: SmtpSettings) {
         return new k8s.core.v1.Secret(
-            `${this.appName}-admin-secret`,
+            `${this.appName}-secret`,
             {
                 metadata: { namespace: this.app.metadata.namespace },
                 stringData: {
                     username: 'admin',
                     password,
+                    ...(smtp.enabled
+                        ? {
+                              'smtp-host': smtp.host,
+                              'smtp-username': smtp.username,
+                              'smtp-password': smtp.password,
+                          }
+                        : {}),
                 },
             },
             { parent: this },
