@@ -27,7 +27,8 @@ pulumi config set mempool:enabled true
 # Optional configuration
 pulumi config set mempool:backend/image mempool/backend:v3.2.1
 pulumi config set mempool:frontend/image mempool/frontend:v3.2.1
-pulumi config set mempool:hostname explorer # override hostname
+pulumi config set mempool:frontend/hostname explorer # public frontend hostname
+pulumi config set mempool:backend/hostname mempool-backend # cluster-internal backend hostname
 
 pulumi up
 
@@ -45,16 +46,8 @@ Mempool does not support OIDC, but it can appear in Pocket ID's App Dashboard as
 a launcher available to every Pocket ID user:
 
 ```sh
-# From stacks/bitcoin
-MEMPOOL_URL=$(pulumi stack output --json | jq -er '.endpoints."mempool-frontend"')
-
-../../scripts/pocket-client.sh \
-  --app-name mempool \
-  --client-name "Mempool" \
-  --launch-url "$MEMPOOL_URL" \
-  --callback-url "$MEMPOOL_URL/" \
-  --dark-icon-url "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/mempool.png" \
-  --light-icon-url "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/mempool.png"
+cd stacks/bitcoin
+./components/mempool/pocket-mempool.sh
 ```
 
 Do not apply the `mempool:auth` commands printed by the script; Mempool uses

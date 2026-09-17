@@ -66,7 +66,8 @@ export class OpenWebUI extends pulumi.ComponentResource {
             IMAGE_GENERATION_ENGINE: 'automatic1111',
             LOG_LEVEL: this.app.debug ? 'debug' : undefined,
             OLLAMA_BASE_URLS: this.args.ollamaUrl,
-            OPENAI_BASE_API_URL: this.args.openAiUrl,
+            OPENAI_API_BASE_URL: this.args.openAiUrl,
+            OPENAI_API_KEY: 'not-used',
             USER_PERMISSIONS_FEATURES_DIRECT_TOOL_SERVERS: 'True',
             USER_PERMISSIONS_WORKSPACE_KNOWLEDGE_ACCESS: 'True',
             USER_PERMISSIONS_WORKSPACE_MODELS_ACCESS: 'True',
@@ -105,7 +106,7 @@ export class OpenWebUI extends pulumi.ComponentResource {
         env.OAUTH_AUTO_REDIRECT = 'True';
         env.OAUTH_CLIENT_ID = auth.clientId;
         env.OAUTH_MERGE_ACCOUNTS_BY_EMAIL = 'True';
-        env.OAUTH_PROVIDER_NAME = config.get(this.name, 'auth/providerName') ?? 'SSO';
+        env.OAUTH_PROVIDER_NAME = auth.providerName ?? 'SSO';
         env.OAUTH_UPDATE_EMAIL_ON_LOGIN = 'True';
         env.OAUTH_UPDATE_NAME_ON_LOGIN = 'True';
         env.OAUTH_UPDATE_PICTURE_ON_LOGIN = 'True';

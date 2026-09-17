@@ -4,6 +4,7 @@ import { CertManager } from './cert-manager/cert-manager';
 import { TailscaleOperator } from './tailscale/tailscale';
 import { Technitium } from './technitium/technitium';
 import { Traefik } from './traefik/traefik';
+import { Zot } from './zot/zot';
 
 export interface NetworkModuleArgs {
     oidc?: OidcProviderSettings;
@@ -11,13 +12,18 @@ export interface NetworkModuleArgs {
 
 export class NetworkModule extends pulumi.ComponentResource {
     technitium?: Technitium;
+    zot?: Zot;
+    traefik?: Traefik;
 
     getExports() {
         return {
             endpoints: {
                 technitium: this.technitium?.endpointUrl,
+                zot: this.zot?.endpointUrl,
+                traefik: this.traefik?.endpointUrl,
             },
             technitiumUsers: this.technitium?.users,
+            zotUsers: this.zot?.users,
         };
     }
 
@@ -57,7 +63,7 @@ export class NetworkModule extends pulumi.ComponentResource {
         }
 
         if (config.isEnabled('traefik')) {
-            new Traefik(
+            this.traefik = new Traefik(
                 'traefik',
                 { oidc: args.oidc },
                 {
@@ -79,6 +85,10 @@ export class NetworkModule extends pulumi.ComponentResource {
                     ],
                 },
             );
+        }
+
+        if (config.isEnabled('zot')) {
+            this.zot = new Zot('zot', { oidc: args.oidc }, { parent: this });
         }
     }
 }

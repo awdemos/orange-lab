@@ -46,16 +46,28 @@ class Config {
         return this.getConfig(appName).getObject(key);
     }
 
+    public requireObject(appName: string, key: string): unknown {
+        return this.getConfig(appName).requireObject(key);
+    }
+
+    public getCommaSeparated(appName: string, key: string): string[] | undefined {
+        const value = this.get(appName, key);
+        return value === undefined ? undefined : this.parseCommaSeparated(value);
+    }
+
     public requireCommaSeparated(appName: string, key: string): string[] {
-        const value = this.require(appName, key);
-        const strings = value
+        const strings = this.parseCommaSeparated(this.require(appName, key));
+        if (strings.length === 0) {
+            throw new Error(`${appName}:${key} must contain at least one value.`);
+        }
+        return strings;
+    }
+
+    private parseCommaSeparated(value: string): string[] {
+        return value
             .split(',')
             .map(item => item.trim())
             .filter(Boolean);
-        if (strings.length === 0) {
-            throw new Error(`${appName}:${key} must contain at least one group.`);
-        }
-        return strings;
     }
 
     public require(appName: string, key: string): string {
@@ -76,6 +88,20 @@ class Config {
 
     public requireNumber(appName: string, key: string): number {
         return this.getConfig(appName).requireNumber(key);
+    }
+
+    public requireEnum<T extends string>(
+        appName: string,
+        key: string,
+        allowed: readonly T[],
+    ): T {
+        const value = this.require(appName, key);
+        if (!allowed.includes(value as T)) {
+            throw new Error(
+                `${appName}:${key} has invalid value '${value}'. Use one of: ${allowed.join(', ')}.`,
+            );
+        }
+        return value as T;
     }
 
     public getBoolean(appName: string, key: string): boolean | undefined {

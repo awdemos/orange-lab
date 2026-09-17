@@ -97,6 +97,7 @@ More information about stacks in general at [Multi-Stack Deployment](./docs/stac
 - [`tailscale-operator`](./components/network/tailscale/tailscale.md) - ingress support with Tailscale authentication
 - [`traefik`](./components/network/traefik/traefik.md) - reverse proxy for custom domain support
 - [`technitium`](./components/network/technitium/technitium.md) - DNS server and ad-blocker
+- [`zot`](./components/network/zot/zot.md) - OCI registry and pull-through image cache
 
 [Storage](./components/storage/STORAGE.md):
 
@@ -150,6 +151,7 @@ More information about stacks in general at [Multi-Stack Deployment](./docs/stac
 [Dev](./stacks/dev/README.md):
 
 - [`debug`](./stacks/dev/components/debug/debug.md) - (Experimental) Troubleshooting utilities and volume access tools
+- [`forgejo`](./stacks/dev/components/forgejo/forgejo.md) - Self-hosted GitHub alternative
 
 [IoT](./stacks/iot/README.md):
 

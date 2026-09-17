@@ -15,7 +15,7 @@ Note: The community edition does not support user authentication so the images y
 Note: Unlike _automatic1111_ and _sdnext_, it doesn't integrate with WebUI.
 
 ```sh
-pulumi config set invokeai:enable true
+pulumi config set invokeai:enabled true
 
 # (Optional) override image for AMD GPU
 # pulumi config set invokeai:image ghcr.io/invoke-ai/invokeai:main-rocm
@@ -31,16 +31,8 @@ InvokeAI community edition does not support user authentication or OIDC, but it
 can appear in Pocket ID's App Dashboard as an unrestricted launcher:
 
 ```sh
-# From stacks/ai
-INVOKEAI_URL=$(pulumi stack output --json | jq -er '.endpoints.invokeai')
-
-../../scripts/pocket-client.sh \
-  --app-name invokeai \
-  --client-name "InvokeAI" \
-  --launch-url "$INVOKEAI_URL" \
-  --callback-url "$INVOKEAI_URL/" \
-  --dark-icon-url "https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/invoke-ai.svg" \
-  --light-icon-url "https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/invoke-ai-light.svg"
+cd stacks/ai
+./components/invokeai/pocket-invokeai.sh
 ```
 
 Do not apply the `invokeai:auth` commands printed by the script; InvokeAI uses

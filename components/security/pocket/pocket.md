@@ -87,9 +87,11 @@ documentation specifically requires an override.
 
 ### (Recommended) Automated setup
 
-The [generic Pocket ID client script](../../../scripts/pocket-client.sh) creates
-the OIDC client, generates its secret, and optionally uploads icons. It requires
-a Pocket ID API key.
+Each application ships a `pocket-<app>.sh` script next to its component. The
+script reads the application URL from the stack outputs and calls the
+[generic Pocket ID client script](../../../scripts/pocket-client.sh), which
+creates the OIDC client, generates its secret, and optionally uploads icons. It
+requires a Pocket ID API key.
 
 Create an API key at **Settings -> Admin -> API Keys**, then store it in the
 core stack:
@@ -98,29 +100,63 @@ core stack:
 pulumi config set pocket:apiKey <api-key> --secret
 ```
 
-Applications currently using the script:
+Applications with native OIDC support:
 
 - [Open WebUI](../../../stacks/ai/components/open-webui/open-webui.md)
 - [Immich](../../../stacks/media/components/immich/immich.md)
 - [DroppedNeedle](../../../stacks/media/components/droppedneedle/droppedneedle.md)
 - [Jellyfin](../../../stacks/media/components/jellyfin/jellyfin.md)
-- [Seerr](../../../stacks/media/components/seerr/seerr.md) (App Dashboard launcher only)
 - [Vaultwarden](../../../stacks/apps/components/vaultwarden/vaultwarden.md)
 - [Nextcloud](../../../stacks/apps/components/nextcloud/nextcloud.md)
 - [RustFS](../../storage/rustfs/rustfs.md)
 - [Technitium](../network/technitium/technitium.md)
 - [Beszel](../../monitoring/beszel/beszel.md)
 - [Grafana (Prometheus)](../../monitoring/prometheus/prometheus.md)
+- [Forgejo](../../../stacks/dev/components/forgejo/forgejo.md)
+- [Home Assistant](../../../stacks/iot/components/home-assistant/home-assistant.md)
+
+Run the application's script from its stack directory, for example from
+`stacks/apps`:
+
+```sh
+./components/nextcloud/pocket-nextcloud.sh
+```
+
+The script creates or reuses the OIDC client and prints the Pulumi configuration
+required by the application. Run those commands before `pulumi up`. For a custom
+stack, add a `pocket-<app>.sh` next to the component that sets the application
+settings and calls `scripts/pocket-client.sh`.
+
+### Applications without OIDC
+
+Some applications cannot log in through Pocket ID. They can still appear in
+Pocket ID's **My Apps** dashboard using a launcher client.
+
+#### Route protection (`protectRoutes`)
+
+Admin tools that have no authentication of their own are protected by the shared
+Traefik OIDC middleware. Requires the **Traefik** routing provider (it raises an
+error with Tailscale). Restrict the OIDC client to the Pocket ID `admin` group
+under **Settings -> OIDC Clients** - Pocket ID then refuses the sign-in for
+non-admins and hides the launcher tile from them, so they cannot reach the tool
+even by opening its URL directly.
+
 - [Longhorn](../../../components/storage/longhorn/longhorn.md) (no user management)
 - [Traefik Dashboard](../../../components/network/traefik/traefik.md)
-- [Mempool](../../../stacks/bitcoin/components/mempool/mempool.md) (App Dashboard launcher only)
-- [InvokeAI](../../../stacks/ai/components/invokeai/invokeai.md) (App Dashboard launcher only)
-- [n8n](../../../stacks/ai/components/n8n/n8n.md) (App Dashboard launcher only)
-- [Home Assistant](../../../stacks/iot/components/home-assistant/home-assistant.md) (App Dashboard launcher only)
 
-Run the script from the application's module stack directory.
-The script creates or reuses the OIDC client and prints the Pulumi configuration
-required by the application. Run those commands before `pulumi up`.
+Run the application's script and apply the printed `<app>:auth` commands.
+
+#### App Dashboard launcher only
+
+These applications are not protected by Pocket ID; the client is only a launcher
+tile. Several have no login of their own, so anyone who can reach their URL can
+use them. Do not run the printed `<app>:auth` commands.
+
+- [Matter](../../../stacks/iot/components/matter/matter.md) (no authentication)
+- [Seerr](../../../stacks/media/components/seerr/seerr.md) (Jellyfin username/password)
+- [Mempool](../../../stacks/bitcoin/components/mempool/mempool.md) (no authentication)
+- [InvokeAI](../../../stacks/ai/components/invokeai/invokeai.md) (no authentication)
+- [n8n](../../../stacks/ai/components/n8n/n8n.md) (OIDC is Enterprise-only)
 
 ### Manual setup
 

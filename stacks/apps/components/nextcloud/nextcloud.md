@@ -31,8 +31,12 @@ pulumi config set nextcloud:enabled true
 pulumi config set nextcloud:hostname nextcloud
 # Set storage size (default: 20Gi)
 pulumi config set nextcloud:storageSize 50Gi
-# Set storage size for PostgreSQL database (default: 5Gi)
-pulumi config set nextcloud:storageSize 10Gi
+# Set storage size for MariaDB database (default: 5Gi)
+pulumi config set nextcloud:db/storageSize 10Gi
+# (Required) trusted proxy CIDRs, comma-separated
+pulumi config set nextcloud:trustedProxies '10.42.0.0/16,10.43.0.0/16'
+# (Required) group sync filter for Pocket ID group provisioning
+pulumi config set nextcloud:groupProvisioningWhitelist '^nextcloud-.*$'
 # (Required) admin password, also used to match restored backups
 KEY=$(openssl rand -base64 32)
 pulumi config set nextcloud:adminPassword "$KEY" --secret
@@ -42,6 +46,23 @@ pulumi up
 Log in as `admin` and create a new user at:
 
 `https://nextcloud.<domain>/settings/admin`
+
+## Email (SMTP)
+
+Nextcloud can send notifications and password-reset emails through an external SMTP server.
+
+```sh
+pulumi config set nextcloud:smtp/enabled true
+pulumi config set nextcloud:smtp/host smtp.example.com
+pulumi config set nextcloud:smtp/port 587
+pulumi config set nextcloud:smtp/secure starttls # none | starttls | smtps
+pulumi config set nextcloud:smtp/from noreply@example.com
+pulumi config set nextcloud:smtp/username your-smtp-username
+pulumi config set nextcloud:smtp/password your-smtp-password --secret
+pulumi up
+```
+
+`smtp/from` must be a plain address — it is split into the local part (`mail_from_address`) and domain (`mail_domain`). Use `secure: starttls` for STARTTLS on port `587`, `secure: smtps` for implicit TLS on port `465`, or `secure: none` to leave the mode to Nextcloud (which cannot force plaintext).
 
 ## OAuth Authentication (Pocket ID)
 
@@ -53,18 +74,7 @@ Requires [Pocket ID](../../../../components/security/pocket/pocket.md) deployed 
 
 ```sh
 cd stacks/apps
-
-NEXTCLOUD_URL=$(pulumi stack output --json | jq -er '.endpoints.nextcloud')
-ENDSESSION_ENDPOINT=$(curl -fsSL "$DISCOVERY_URL" | jq -er '.end_session_endpoint')
-
-../../scripts/pocket-client.sh \
-  --app-name nextcloud \
-  --client-name Nextcloud \
-  --launch-url "$NEXTCLOUD_URL" \
-  --callback-url "$NEXTCLOUD_URL/apps/user_oidc/code" \
-  --logout-callback-url "$NEXTCLOUD_URL/apps/user_oidc/backchannel-logout/PocketID" \
-  --dark-icon-url https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/nextcloud.svg \
-  --light-icon-url https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/nextcloud.svg
+./components/nextcloud/pocket-nextcloud.sh
 ```
 
 The helper creates or reuses the client and prints the required Pulumi configuration. Keep the client non-public with PKCE enabled.
@@ -75,7 +85,7 @@ The helper creates or reuses the client and prints the required Pulumi configura
 pulumi config set nextcloud:auth pocket
 pulumi config set nextcloud:auth/clientId <client-id>
 pulumi config set nextcloud:auth/clientSecret <client-secret> --secret
-# Optional: override the default ^nextcloud-.*$ group sync filter.
+# Optional: override the group sync filter set in the basic configuration.
 # All users can still log in; only matching groups are synchronized.
 pulumi config set nextcloud:groupProvisioningWhitelist '^nextcloud-.*$'
 pulumi up
